@@ -41,11 +41,18 @@ public class OrderService {
 
     List<Stock> stocks = stockRepository.findAll();
     for (Stock stock : stocks) {
+     //주문 전 매수대상인지 체크
+      if(!beforeBuy(stock)) {
+        continue;
+      }
+
       //매수
       Order buyOrder = buy(stock);
+
       //매도
       sell(buyOrder);
       checkSellOrder(stock);
+      Thread.sleep(500);
     }
   }
 
@@ -114,9 +121,6 @@ public class OrderService {
    * @throws JsonProcessingException
    */
   private Order buy(Stock stock) throws InterruptedException, JsonProcessingException {
-    //주문 전 매수대상인지 체크
-    beforeBuy(stock);
-
     //매수
     BuyMarketOrderDto buyMarketOrderDto = hanTooApi.buyMarketOrder(stock.getTicker(),
         stock.getVolume());
@@ -153,10 +157,11 @@ public class OrderService {
    * @param stock: 주식정보
    * @throws InterruptedException
    */
-  private void beforeBuy(Stock stock) throws InterruptedException {
+  private boolean beforeBuy(Stock stock) throws InterruptedException {
+
     if (stock.getVolume() == 0) {
-      log.info("셋팅 수량이 0 인경우 주문을 하지 않고 다음 주문으로 넘어감");
-      return;
+      log.info("셋팅 수량이 0 인경우 주문을 하지 않음");
+      return false;
     }
 
     //해당 티커의 가장 낮은 가격의주문서를 조회
@@ -164,16 +169,20 @@ public class OrderService {
         stock.getTicker(), Status.WAIT);
     if (lowestOrder == null) {
       log.info("이전 수량이 없어 첫 주문 시작");
+      return true;
     } else if (lowestOrder.getBuyPrice() > 0) {
       Integer nowPrice = hanTooApi.checkPrice(stock.getTicker());
       double calPrice = lowestOrder.getBuyPrice() * stock.getBuyRate();
 
-      if (nowPrice > calPrice) {
-        log.info("현재 가격이 주문해야할 가격보다 높으므로 다음 주문으로 넘어감");
-        return;
+      if (nowPrice >= calPrice) {
+        log.info("현재 가격이 주문해야할 가격보다 높음");
+        return false;
+      }else {
+        return true;
       }
+    } else {
+      throw new RuntimeException("주문서의 주문가격이 음수");
     }
-    Thread.sleep(500);
   }
 
   /**
