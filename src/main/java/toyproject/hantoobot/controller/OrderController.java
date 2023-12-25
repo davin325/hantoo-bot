@@ -17,7 +17,11 @@ public class OrderController {
   @Scheduled(cron = "0 0/10 10-15 ? * MON-FRI")
   @GetMapping("/stock-order")
   public void order() throws Exception {
-    if(!startFlag && !orderService.checkHoliday()) {
+    if(orderService.checkHoliday()) {
+      return;
+    }
+
+    if(!startFlag) {
       orderService.sellBeforeStart();
       startFlag = true;
     }
