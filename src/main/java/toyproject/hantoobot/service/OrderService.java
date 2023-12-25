@@ -33,14 +33,6 @@ public class OrderService {
    * @throws Exception
    */
   public void newOrder() throws Exception {
-    hanTooApi.initSetting();
-
-    //토큰 발급
-    hanTooApi.getAuthorization();
-    if (checkHoliday()) {
-      return;
-    }
-
     List<Stock> stocks = stockRepository.findAll();
     for (Stock stock : stocks) {
      //주문 전 매수대상인지 체크
@@ -61,9 +53,11 @@ public class OrderService {
 
   /**
    * 장 시간에 팔리지 못한 주식들을 최종적으로 매도 되었는지 확인 후 초기화 한다.
-   * @throws InterruptedException
+   * @throws
    */
-  public void sellOrderInit() throws InterruptedException {
+  public void sellOrderInit() throws Exception {
+    //토큰 발급
+    hanTooApi.getAuthorization();
     List<Stock> stocks = stockRepository.findAll();
     for (Stock stock : stocks) {
       checkSellOrder(stock);
@@ -81,6 +75,8 @@ public class OrderService {
    * @throws JsonProcessingException
    */
   public void sellBeforeStart() throws InterruptedException, JsonProcessingException {
+    //토큰 발급
+    hanTooApi.getAuthorization();
     List<Order> byState = orderRepository.findByState(Status.INIT);
     for (Order order : byState) {
       sell(order);
@@ -92,7 +88,7 @@ public class OrderService {
    * @param stock: 주식정보
 보  * @throws InterruptedException
    */
-  private void checkSellOrder(Stock stock) throws InterruptedException {
+  public void checkSellOrder(Stock stock) throws InterruptedException {
     List<CheckSellOrderDto> checkSellOrderDtos = hanTooApi.checkSellOrder(stock);
 
     for (CheckSellOrderDto checkSellOrderDto : checkSellOrderDtos) {
@@ -122,7 +118,7 @@ public class OrderService {
    * @throws InterruptedException
    * @throws JsonProcessingException
    */
-  private Order buy(Stock stock) throws InterruptedException, JsonProcessingException {
+  public Order buy(Stock stock) throws InterruptedException, JsonProcessingException {
     //매수
     BuyMarketOrderDto buyMarketOrderDto = hanTooApi.buyMarketOrder(stock.getTicker(),
         stock.getVolume());
@@ -159,7 +155,7 @@ public class OrderService {
    * @param stock: 주식정보
    * @throws InterruptedException
    */
-  private boolean beforeBuy(Stock stock) throws InterruptedException {
+  public boolean beforeBuy(Stock stock) throws InterruptedException {
 
     if (stock.getVolume() == 0) {
       log.info("셋팅 수량이 0 인경우 주문을 하지 않음");
@@ -189,9 +185,9 @@ public class OrderService {
 
   /**
    * 휴장일 체크 메소드
-   * @return
+   * @return true: 휴장, false: 개장
    */
-  private boolean checkHoliday() {
+  public boolean checkHoliday() {
     String checkMarket = hanTooApi.checkHoliday();
     if ("N".equals(checkMarket)) {
       log.info("휴장");
