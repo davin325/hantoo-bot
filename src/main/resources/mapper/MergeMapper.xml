@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="toyproject.hantoobot.model.mybatis.mapper.MergeMapper">
+  <select id="getTicker" resultType="toyproject.hantoobot.model.mybatis.dto.StockDto">
+    SELECT ticker, stock_name, buy_rate, sell_rate, volume
+    FROM stock
+  </select>
+
+  <select id="getOrders" resultType="toyproject.hantoobot.model.mybatis.dto.OrderDto">
+    SELECT order_id, ticker, buy_key, sell_key, state, qty, buy_price, total_price, qty_hist
+    FROM stock_order
+    WHERE ticker = #{ticker}
+      AND state = 'INIT'
+    ORDER BY buy_price ASC
+  </select>
+
+  <insert id="insertMergeOrder" parameterType="toyproject.hantoobot.model.mybatis.dto.OrderDto">
+    INSERT INTO stock_order
+    (ticker, buy_key, state, qty, buy_price, total_price, qty_hist, created_at, updated_at)
+    VALUES
+      (#{ticker}, #{buyKey}, #{state},#{qty}, #{buyPrice}, #{totalPrice}, #{qtyHist}, now(), now())
+  </insert>
+
+  <update id="updateMergeOrder" parameterType="java.util.Map">
+    UPDATE stock_order
+    set state = #{highOrder.state} , updated_at = now()
+    WHERE buy_key = #{lowOrder.buyKey} OR buy_key = #{highOrder.buyKey}
+  </update>
+</mapper>
