@@ -1,13 +1,9 @@
 package toyproject.hantoobot.controller;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import toyproject.hantoobot.model.jpa.entity.KeyValueStore;
-import toyproject.hantoobot.repository.KeyValueStoreRepository;
-import toyproject.hantoobot.service.MergeService;
 import toyproject.hantoobot.service.OrderService;
 
 @RequiredArgsConstructor
@@ -33,8 +29,8 @@ public class OrderController {
 
 
   @Scheduled(cron = "0 0 17 ? * MON-FRI")
-  @GetMapping("/stock-check-sell-order")
-  public void checkSellOrder() {
+  @GetMapping("/stock-sell-order-init")
+  public void sellOrderInit() {
     orderService.sellOrderInit();
     startFlag = false;
   }

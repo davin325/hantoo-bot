@@ -30,11 +30,11 @@ public class OrderService {
   /**
    * 10:00 ~ 16:00 장 시간에 주기적으로 실행
    */
-  public void newOrder()  {
+  public void newOrder() {
     List<Stock> stocks = stockRepository.findAll();
     for (Stock stock : stocks) {
-     //주문 전 매수대상인지 체크
-      if(!beforeBuy(stock)) {
+      //주문 전 매수대상인지 체크
+      if (!beforeBuy(stock)) {
         continue;
       }
 
@@ -47,7 +47,7 @@ public class OrderService {
       try {
         Thread.sleep(500);
       } catch (InterruptedException e) {
-        e.printStackTrace();
+        log.error("thread sleep error", e);
       }
     }
   }
@@ -84,6 +84,7 @@ public class OrderService {
 
   /**
    * 매도 되었는지 확인 후 업데이트.
+   *
    * @param stock: 주식정보
    */
   public void checkSellOrder(Stock stock) {
@@ -103,6 +104,7 @@ public class OrderService {
         order.setQty(0);
         order.setState(State.SOLD);
       } else {
+        //부분 매도 된 경우
         order.setQty(order.getQty() - checkSellOrderDto.getSellQty());
       }
     }
@@ -111,6 +113,7 @@ public class OrderService {
 
   /**
    * 매수
+   *
    * @param stock: 주식정보
    * @return 주문서
    */
@@ -136,18 +139,20 @@ public class OrderService {
 
   /**
    * 매도
+   *
    * @param order: 주문서
    */
   public void sell(Order order) {
     //지정가 매도
     SellLimitOrderDto sellLimitOrderDto = hanTooApi.sellLimitOrder(order);
-    if(sellLimitOrderDto.getSellKey() != null) {
+    if (sellLimitOrderDto.getSellKey() != null) {
       order.updateStartSell(sellLimitOrderDto);
     }
   }
 
   /**
    * 매수 전 매수 대상인지 확인 하는 메소드
+   *
    * @param stock: 주식정보
    */
   public boolean beforeBuy(Stock stock) {
@@ -170,7 +175,7 @@ public class OrderService {
       if (nowPrice >= calPrice) {
         log.info("현재 가격이 주문해야할 가격보다 높음");
         return false;
-      }else {
+      } else {
         return true;
       }
     } else {
@@ -180,6 +185,7 @@ public class OrderService {
 
   /**
    * 휴장일 체크 메소드
+   *
    * @return true: 휴장, false: 개장
    */
   public boolean checkHoliday() {

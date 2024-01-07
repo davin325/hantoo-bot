@@ -12,7 +12,7 @@ public class MergeController {
   private final MergeService mergeService;
 
   @Scheduled(cron = "0 0 17 ? * SUN")
-  @GetMapping("/mergeOrder")
+  @GetMapping("/merge-order")
   public void mergeOrder() {
     mergeService.mergeOrder();
   }
