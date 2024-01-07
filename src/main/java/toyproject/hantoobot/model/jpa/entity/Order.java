@@ -1,4 +1,4 @@
-package toyproject.hantoobot.model.entity;
+package toyproject.hantoobot.model.jpa.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,9 +15,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import toyproject.hantoobot.model.dto.CheckBuyOrderDto;
-import toyproject.hantoobot.model.dto.SellLimitOrderDto;
-import toyproject.hantoobot.model.enums.Status;
+import toyproject.hantoobot.model.jpa.dto.CheckBuyOrderDto;
+import toyproject.hantoobot.model.jpa.dto.SellLimitOrderDto;
+import toyproject.hantoobot.model.enums.State;
 
 @Entity
 @Getter
@@ -42,7 +42,7 @@ public class Order extends BaseTimeEntity {
   private String sellKey;
 
   @Enumerated(value = EnumType.STRING)
-  private Status state;
+  private State state;
 
   private int qty;
 
@@ -54,7 +54,7 @@ public class Order extends BaseTimeEntity {
 
   private int sellPrice;
 
-  public Order(String buyKey, Status state, int qty, int qtyHist, Stock stock) {
+  public Order(String buyKey, State state, int qty, int qtyHist, Stock stock) {
     this.buyKey = buyKey;
     this.state = state;
     this.qty = qty;
@@ -63,7 +63,7 @@ public class Order extends BaseTimeEntity {
   }
 
   public void buyFinish(CheckBuyOrderDto checkBuyOrderDto) {
-    this.state = Status.WAIT;
+    this.state = State.WAIT;
     this.buyPrice = checkBuyOrderDto.getBuyPrice();
     this.totalPrice = checkBuyOrderDto.getTotalPrice();
   }
@@ -75,7 +75,7 @@ public class Order extends BaseTimeEntity {
 
   public void sellInit() {
     this.sellKey = null;
-    this.state = Status.INIT;
+    this.state = State.INIT;
     this.sellPrice = 0;
   }
 }

@@ -7,6 +7,6 @@ package toyproject.hantoobot.model.enums;
  * MERGE: 합쳐진 주문서,
  * INIT: 매도 되지 않은 주문서 초기화
  */
-public enum Status {
+public enum State {
   BUY, WAIT, SOLD, MERGE, INIT
 }

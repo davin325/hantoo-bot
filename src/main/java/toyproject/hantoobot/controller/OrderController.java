@@ -1,10 +1,13 @@
 package toyproject.hantoobot.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import toyproject.hantoobot.model.jpa.entity.KeyValueStore;
+import toyproject.hantoobot.repository.KeyValueStoreRepository;
+import toyproject.hantoobot.service.MergeService;
 import toyproject.hantoobot.service.OrderService;
 
 @RequiredArgsConstructor
@@ -16,12 +19,12 @@ public class OrderController {
 
   @Scheduled(cron = "0 0/10 10-15 ? * MON-FRI")
   @GetMapping("/stock-order")
-  public void order() throws Exception {
-    if(orderService.checkHoliday()) {
+  public void order() {
+    if (orderService.checkHoliday()) {
       return;
     }
 
-    if(!startFlag) {
+    if (!startFlag) {
       orderService.sellBeforeStart();
       startFlag = true;
     }
@@ -31,7 +34,7 @@ public class OrderController {
 
   @Scheduled(cron = "0 0 17 ? * MON-FRI")
   @GetMapping("/stock-check-sell-order")
-  public void checkSellOrder() throws Exception {
+  public void checkSellOrder() {
     orderService.sellOrderInit();
     startFlag = false;
   }

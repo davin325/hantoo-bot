@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import toyproject.hantoobot.model.enums.Status;
+import toyproject.hantoobot.model.enums.State;
 import toyproject.hantoobot.model.mybatis.dto.OrderDto;
 import toyproject.hantoobot.model.mybatis.dto.StockDto;
 import toyproject.hantoobot.model.mybatis.mapper.MergeMapper;
@@ -45,11 +45,11 @@ public class MergeService {
             .qty(newQty)
             .qtyHist(newQty)
             .totalPrice(newTotalPrice)
-            .state(Status.INIT)
+            .state(State.INIT)
             .buyPrice(newBuyPrice).build();
 
-        highOrder.setState(Status.MERGE);
-        lowOrder.setState(Status.MERGE);
+        highOrder.setState(State.MERGE);
+        lowOrder.setState(State.MERGE);
         mergeMapper.insertMergeOrder(mergeOrder);
         mergeMapper.updateMergeOrder(lowOrder, highOrder);
 

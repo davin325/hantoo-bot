@@ -1,4 +1,4 @@
-package toyproject.hantoobot.model.dto;
+package toyproject.hantoobot.model.jpa.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

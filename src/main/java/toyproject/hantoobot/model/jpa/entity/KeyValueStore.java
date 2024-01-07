@@ -1,4 +1,4 @@
-package toyproject.hantoobot.model.entity;
+package toyproject.hantoobot.model.jpa.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -1,9 +1,6 @@
-package toyproject.hantoobot.model.entity;
+package toyproject.hantoobot.model.jpa.entity;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -16,15 +13,10 @@ import lombok.Setter;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Stock extends BaseTimeEntity{
 
-
-
-
-
-
-  private String stockName;
-
   @Id
   private String ticker;
+
+  private String stockName;
 
   private double buyRate;
 

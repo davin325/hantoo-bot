@@ -1,19 +1,18 @@
 package toyproject.hantoobot.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import toyproject.hantoobot.api.HanTooApi;
-import toyproject.hantoobot.model.dto.BuyMarketOrderDto;
-import toyproject.hantoobot.model.dto.CheckBuyOrderDto;
-import toyproject.hantoobot.model.dto.CheckSellOrderDto;
-import toyproject.hantoobot.model.dto.SellLimitOrderDto;
-import toyproject.hantoobot.model.entity.Order;
-import toyproject.hantoobot.model.entity.Stock;
-import toyproject.hantoobot.model.enums.Status;
+import toyproject.hantoobot.model.jpa.dto.BuyMarketOrderDto;
+import toyproject.hantoobot.model.jpa.dto.CheckBuyOrderDto;
+import toyproject.hantoobot.model.jpa.dto.CheckSellOrderDto;
+import toyproject.hantoobot.model.jpa.dto.SellLimitOrderDto;
+import toyproject.hantoobot.model.jpa.entity.Order;
+import toyproject.hantoobot.model.jpa.entity.Stock;
+import toyproject.hantoobot.model.enums.State;
 import toyproject.hantoobot.repository.OrderRepository;
 import toyproject.hantoobot.repository.StockRepository;
 
@@ -30,9 +29,8 @@ public class OrderService {
 
   /**
    * 10:00 ~ 16:00 장 시간에 주기적으로 실행
-   * @throws Exception
    */
-  public void newOrder() throws Exception {
+  public void newOrder()  {
     List<Stock> stocks = stockRepository.findAll();
     for (Stock stock : stocks) {
      //주문 전 매수대상인지 체크
@@ -46,16 +44,19 @@ public class OrderService {
       //매도
       sell(buyOrder);
       checkSellOrder(stock);
-      Thread.sleep(500);
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
   }
 
 
   /**
    * 장 시간에 팔리지 못한 주식들을 최종적으로 매도 되었는지 확인 후 초기화 한다.
-   * @throws
    */
-  public void sellOrderInit() throws Exception {
+  public void sellOrderInit() {
     //토큰 발급
     hanTooApi.getAuthorization();
     List<Stock> stocks = stockRepository.findAll();
@@ -63,7 +64,7 @@ public class OrderService {
       checkSellOrder(stock);
     }
 
-    List<Order> orders = orderRepository.findByState(Status.WAIT);
+    List<Order> orders = orderRepository.findByState(State.WAIT);
     for (Order order : orders) {
       order.sellInit();
     }
@@ -71,13 +72,11 @@ public class OrderService {
 
   /**
    * 장이 열리자마자 전날에 초기화 한 주식들을 매도 주문 해놓는다.
-   * @throws InterruptedException
-   * @throws JsonProcessingException
    */
-  public void sellBeforeStart() throws InterruptedException, JsonProcessingException {
+  public void sellBeforeStart() {
     //토큰 발급
     hanTooApi.getAuthorization();
-    List<Order> byState = orderRepository.findByState(Status.INIT);
+    List<Order> byState = orderRepository.findByState(State.INIT);
     for (Order order : byState) {
       sell(order);
     }
@@ -86,9 +85,8 @@ public class OrderService {
   /**
    * 매도 되었는지 확인 후 업데이트.
    * @param stock: 주식정보
-보  * @throws InterruptedException
    */
-  public void checkSellOrder(Stock stock) throws InterruptedException {
+  public void checkSellOrder(Stock stock) {
     List<CheckSellOrderDto> checkSellOrderDtos = hanTooApi.checkSellOrder(stock);
 
     for (CheckSellOrderDto checkSellOrderDto : checkSellOrderDtos) {
@@ -103,7 +101,7 @@ public class OrderService {
       if (order.getQty() - checkSellOrderDto.getSellQty() == 0) {
         //매도 완료
         order.setQty(0);
-        order.setState(Status.SOLD);
+        order.setState(State.SOLD);
       } else {
         order.setQty(order.getQty() - checkSellOrderDto.getSellQty());
       }
@@ -114,18 +112,16 @@ public class OrderService {
   /**
    * 매수
    * @param stock: 주식정보
-   * @return
-   * @throws InterruptedException
-   * @throws JsonProcessingException
+   * @return 주문서
    */
-  public Order buy(Stock stock) throws InterruptedException, JsonProcessingException {
+  public Order buy(Stock stock) {
     //매수
     BuyMarketOrderDto buyMarketOrderDto = hanTooApi.buyMarketOrder(stock.getTicker(),
         stock.getVolume());
 
     if (buyMarketOrderDto.getBuyKey() != null) {
       //매수 주문 저장
-      Order order = new Order(buyMarketOrderDto.getBuyKey(), Status.BUY, buyMarketOrderDto.getQty(),
+      Order order = new Order(buyMarketOrderDto.getBuyKey(), State.BUY, buyMarketOrderDto.getQty(),
           buyMarketOrderDto.getQtyHist(), stock);
       orderRepository.save(order);
 
@@ -141,21 +137,20 @@ public class OrderService {
   /**
    * 매도
    * @param order: 주문서
-   * @throws InterruptedException
-   * @throws JsonProcessingException
    */
-  public void sell(Order order) throws InterruptedException, JsonProcessingException {
+  public void sell(Order order) {
     //지정가 매도
     SellLimitOrderDto sellLimitOrderDto = hanTooApi.sellLimitOrder(order);
-    order.updateStartSell(sellLimitOrderDto);
+    if(sellLimitOrderDto.getSellKey() != null) {
+      order.updateStartSell(sellLimitOrderDto);
+    }
   }
 
   /**
    * 매수 전 매수 대상인지 확인 하는 메소드
    * @param stock: 주식정보
-   * @throws InterruptedException
    */
-  public boolean beforeBuy(Stock stock) throws InterruptedException {
+  public boolean beforeBuy(Stock stock) {
 
     if (stock.getVolume() == 0) {
       log.info("셋팅 수량이 0 인경우 주문을 하지 않음");
@@ -164,7 +159,7 @@ public class OrderService {
 
     //해당 티커의 가장 낮은 가격의주문서를 조회
     Order lowestOrder = orderRepository.findTop1ByStockTickerAndStateOrderByBuyPrice(
-        stock.getTicker(), Status.WAIT);
+        stock.getTicker(), State.WAIT);
     if (lowestOrder == null) {
       log.info("이전 수량이 없어 첫 주문 시작");
       return true;

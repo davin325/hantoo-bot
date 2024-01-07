@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import toyproject.hantoobot.model.entity.KeyValueStore;
+import toyproject.hantoobot.model.jpa.entity.KeyValueStore;
 import toyproject.hantoobot.repository.KeyValueStoreRepository;
 import toyproject.hantoobot.utill.AesUtill;
 
@@ -28,7 +28,7 @@ public class KeyValueStoreController {
   }
 
   @PostMapping("/api/key-value-crypto/new")
-  public void newKeyValueCrypto(@RequestBody @Valid NewKeyValueRequest request) throws Exception {
+  public void newKeyValueCrypto(@RequestBody @Valid NewKeyValueRequest request) {
     String encodeData = aesUtill.aesCBCEncode(request.itemValue);
     keyValueStoreRepository.save(new KeyValueStore(request.getItemKey(),encodeData));
 

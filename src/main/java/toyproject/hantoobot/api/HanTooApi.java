@@ -3,7 +3,6 @@ package toyproject.hantoobot.api;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.LocalDate;
@@ -24,12 +23,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-import toyproject.hantoobot.model.dto.BuyMarketOrderDto;
-import toyproject.hantoobot.model.dto.CheckBuyOrderDto;
-import toyproject.hantoobot.model.dto.CheckSellOrderDto;
-import toyproject.hantoobot.model.dto.SellLimitOrderDto;
-import toyproject.hantoobot.model.entity.Order;
-import toyproject.hantoobot.model.entity.Stock;
+import toyproject.hantoobot.model.jpa.dto.BuyMarketOrderDto;
+import toyproject.hantoobot.model.jpa.dto.CheckBuyOrderDto;
+import toyproject.hantoobot.model.jpa.dto.CheckSellOrderDto;
+import toyproject.hantoobot.model.jpa.dto.SellLimitOrderDto;
+import toyproject.hantoobot.model.jpa.entity.Order;
+import toyproject.hantoobot.model.jpa.entity.Stock;
 import toyproject.hantoobot.repository.KeyValueStoreRepository;
 import toyproject.hantoobot.utill.AesUtill;
 import toyproject.hantoobot.utill.CalculatePrice;
@@ -55,13 +54,12 @@ public class HanTooApi {
   private String getAccessToken = null;
   private String accessTokenExpired = null;
   private String account = null;
-  //private Integer rsiCnt = 1;
 
 
   /**
    * 설정 초기화 API
    */
-  public void initSetting() throws Exception {
+  public void initSetting() {
     appKey = aesUtill.aesCBCDecode(
         keyValueStoreRepository.findByItemKey("hantooAppKey").getItemValue());
     appSecretKey = aesUtill.aesCBCDecode(
@@ -106,13 +104,12 @@ public class HanTooApi {
         JsonNode output = jsonNode.get("output");
         Integer price = output.get("stck_prpr").asInt();
         return price;
-      } catch (IOException e) {
-        e.printStackTrace();
-        log.error("[CHECK_PRICE] response.getBody = {}", response.getBody());
+      } catch (JsonProcessingException e) {
+        log.error("[checkPrice] JSON 파싱 에러 response.getBody = {}", response.getBody());
         return Integer.MAX_VALUE;
       }
     } else {
-      log.error("[CHECK_PRICE] response.getStatusCode = {}", response.getStatusCode().value());
+      log.error("[checkPrice] response.getStatusCode = {}", response.getStatusCode().value());
       return Integer.MAX_VALUE;
     }
   }
@@ -163,25 +160,23 @@ public class HanTooApi {
           if (baseDt.equals(formattedDate) && opndYn.equals("Y")) {
             log.info("장이 열렸습니다.");
             return "Y";
-
           } else if (baseDt.equals(formattedDate) && opndYn.equals("N")) {
             log.info("휴장일 입니다.");
             return "N";
           } else {
-            log.error("[CHECK_HOLIDAY] opndYn = {}", opndYn);
+            log.error("[checkHoliday] opndYn = {}", opndYn);
             return "N";
           }
         }
         //for 문을 타지 않은 경우임
-        log.error("[CHECK_HOLIDAY] outputArray = {}", outputArray);
+        log.error("[checkHoliday] outputArray = {}", outputArray);
         return "N";
-      } catch (IOException e) {
-        log.error("[CHECK_HOLIDAY] response.getBody = {}", response.getBody());
-        e.printStackTrace();
+      } catch (JsonProcessingException e) {
+        log.error("[checkHoliday] response.getBody = {}", response.getBody());
         return "N";
       }
     } else {
-      log.error("[CHECK_HOLIDAY] response.getStatusCode = {}",
+      log.error("[checkHoliday] response.getStatusCode = {}",
           response.getStatusCode().value());
       return "N";
     }
@@ -189,10 +184,8 @@ public class HanTooApi {
 
   /**
    * 토큰값 발급 API
-   *
-   * @throws JsonProcessingException json 파싱 에러
    */
-  public void getAuthorization() throws JsonProcessingException {
+  public void getAuthorization() {
     if (accessTokenExpired != null) {
       // 현재 날짜 가져오기
       LocalDateTime currentDateTime = LocalDateTime.now();
@@ -219,22 +212,24 @@ public class HanTooApi {
     requestBodyMap.put("appkey", appKey);
     requestBodyMap.put("appsecret", appSecretKey);
 
-    ObjectMapper objectMapper = new ObjectMapper();
-    String requestBody = objectMapper.writeValueAsString(requestBodyMap);
-
-    HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
-
-    URI url = UriComponentsBuilder.fromUriString(apiUrl).path("oauth2/tokenP").build().toUri();
-    ;
-    ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.POST,
-        request, new ParameterizedTypeReference<>() {
-        });
-
-    if (response.getStatusCode().is2xxSuccessful()) {
-      accessToken = String.valueOf(response.getBody().get("access_token"));
-      accessTokenExpired = String.valueOf(response.getBody().get("access_token_token_expired"));
-    } else {
-      log.error("[getAuthorization] response.getStatusCode = {}", response.getStatusCode());
+    try {
+      ObjectMapper objectMapper = new ObjectMapper();
+      String requestBody = objectMapper.writeValueAsString(requestBodyMap);
+      HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+      URI url = UriComponentsBuilder.fromUriString(apiUrl).path("oauth2/tokenP").build().toUri();
+      ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.POST,
+          request, new ParameterizedTypeReference<>() {
+          });
+      if (response.getStatusCode().is2xxSuccessful()) {
+        //토큰 설정
+        accessToken = String.valueOf(response.getBody().get("access_token"));
+        accessTokenExpired = String.valueOf(response.getBody().get("access_token_token_expired"));
+      } else {
+        log.error("[getAuthorization] response.getStatusCode = {}", response.getStatusCode());
+      }
+    } catch (JsonProcessingException e) {
+      log.error("[getAuthorization] requestBodyMap = {}", requestBodyMap);
+      throw new RuntimeException("requestBodyMap 셋팅 에러", e);
     }
   }
 
@@ -243,11 +238,9 @@ public class HanTooApi {
    *
    * @param pdno   : 티커
    * @param ordQty : 수량
-   * @return
-   * @throws JsonProcessingException
-   * @throws InterruptedException
+   * @return 매수 주문서
    */
-  public BuyMarketOrderDto buyMarketOrder(String pdno, int ordQty) throws JsonProcessingException {
+  public BuyMarketOrderDto buyMarketOrder(String pdno, int ordQty) {
 
     ///헤더 셋팅
     HttpHeaders headers = new HttpHeaders();
@@ -268,19 +261,21 @@ public class HanTooApi {
     requestBodyMap.put("ORD_QTY", String.valueOf(ordQty)); // 주문수량
     requestBodyMap.put("ORD_UNPR", "0"); // 시장가는 0으로 셋팅
 
-    ObjectMapper objectMapper = new ObjectMapper();
-    String requestBody = objectMapper.writeValueAsString(requestBodyMap);
-    HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+    ResponseEntity<Map<String, Object>> response = null;
 
-    URI url = UriComponentsBuilder.fromUriString(apiUrl)
-        .path("uapi/domestic-stock/v1/trading/order-cash").build().toUri();
+    try {
+      ObjectMapper objectMapper = new ObjectMapper();
+      String requestBody = objectMapper.writeValueAsString(requestBodyMap);
+      HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
 
-    ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.POST,
-        request, new ParameterizedTypeReference<>() {
-        });
+      URI url = UriComponentsBuilder.fromUriString(apiUrl)
+          .path("uapi/domestic-stock/v1/trading/order-cash").build().toUri();
 
-    if (response.getStatusCode().is2xxSuccessful()) {
-      try {
+      response = restTemplate.exchange(url, HttpMethod.POST,
+          request, new ParameterizedTypeReference<>() {
+          });
+
+      if (response.getStatusCode().is2xxSuccessful()) {
         objectMapper = new ObjectMapper();
         JsonNode jsonNode = objectMapper.readTree(
             objectMapper.writeValueAsString(response.getBody()));
@@ -305,17 +300,17 @@ public class HanTooApi {
 
           return buyMarketOrderDto;
         } else {
-          log.error("매수 주문오류 response = {}", response.getBody());
+          log.error("[buyMarketOrder] 매수 주문 오류 retCode = {}", retCode);
           return new BuyMarketOrderDto();
         }
-      } catch (IOException e) {
-        e.printStackTrace();
+      } else {
+        log.error("[buyMarketOrder] 매수 주문 오류 statusCode = {} response ={}",
+            response.getStatusCode(),
+            response.getBody());
         return new BuyMarketOrderDto();
       }
-
-    } else {
-      log.error("매수 주문 오류 statusCode = {} response ={}", response.getStatusCode(),
-          response.getBody());
+    } catch (JsonProcessingException e) {
+      log.error("[buyMarketOrder] JSON 파싱 에러 request = {} response = {}", requestBodyMap, response);
       return new BuyMarketOrderDto();
     }
   }
@@ -325,12 +320,9 @@ public class HanTooApi {
    * 지정가 매도주문
    *
    * @param order: 주문서
-   * @return
-   * @throws InterruptedException
-   * @throws JsonProcessingException
+   * @return 매도 주문서
    */
-  public SellLimitOrderDto sellLimitOrder(Order order)
-      throws InterruptedException, JsonProcessingException {
+  public SellLimitOrderDto sellLimitOrder(Order order) {
 
     ///헤더 셋팅
     HttpHeaders headers = new HttpHeaders();
@@ -342,6 +334,10 @@ public class HanTooApi {
 //    TTTC0802U : 주식 현금 매수 주문
 //    TTTC0801U : 주식 현금 매도 주문
 
+    String buyPrice = String.valueOf(order.getBuyPrice());
+    String sellRate = String.valueOf(order.getStock().getSellRate());
+    BigDecimal roundedNumber = calculatePrice.getRoundedNumber(buyPrice, sellRate);
+
     //BODY 셋팅
     Map<String, Object> requestBodyMap = new HashMap<>();
     requestBodyMap.put("CANO", account); //계좌
@@ -349,26 +345,24 @@ public class HanTooApi {
     requestBodyMap.put("PDNO", order.getStock().getTicker());
     requestBodyMap.put("ORD_DVSN", "00"); //지정가
     requestBodyMap.put("ORD_QTY", String.valueOf(order.getQty())); // 주문수량
-    String buyPrice = String.valueOf(order.getBuyPrice());
-    String sellRate = String.valueOf(order.getStock().getSellRate());
-    BigDecimal roundedNumber = calculatePrice.getRoundedNumber(buyPrice, sellRate);
-
     requestBodyMap.put("ORD_UNPR", String.valueOf(roundedNumber)); // 단가
 
-    ObjectMapper objectMapper = new ObjectMapper();
-    String requestBody = objectMapper.writeValueAsString(requestBodyMap);
+    ResponseEntity<Map<String, Object>> response = null;
 
-    HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+    try {
+      ObjectMapper objectMapper = new ObjectMapper();
+      String requestBody = objectMapper.writeValueAsString(requestBodyMap);
 
-    URI url = UriComponentsBuilder.fromUriString(apiUrl)
-        .path("uapi/domestic-stock/v1/trading/order-cash").build().toUri();
+      HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
 
-    ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.POST,
-        request, new ParameterizedTypeReference<>() {
-        });
+      URI url = UriComponentsBuilder.fromUriString(apiUrl)
+          .path("uapi/domestic-stock/v1/trading/order-cash").build().toUri();
 
-    if (response.getStatusCode().is2xxSuccessful()) {
-      try {
+      response = restTemplate.exchange(url, HttpMethod.POST,
+          request, new ParameterizedTypeReference<>() {
+          });
+
+      if (response.getStatusCode().is2xxSuccessful()) {
         objectMapper = new ObjectMapper();
         JsonNode jsonNode = objectMapper.readTree(
             objectMapper.writeValueAsString(response.getBody()));
@@ -390,22 +384,28 @@ public class HanTooApi {
               .build();
 
           return sellLimitOrderDto;
-
         } else {
-          log.error("매도 주문 오류 response ={}", response.getBody());
-          throw new RuntimeException("retCode 가 0이 아닙니다.");
+          log.error("[sellLimitOrder] 매도 주문 오류 response ={}", response.getBody());
+          return new SellLimitOrderDto();
         }
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException("매도 주문 오류");
+      } else {
+        log.error("[sellLimitOrder] 매도 주문 오류 statusCode = {} response ={}",
+            response.getStatusCode(),
+            response.getBody());
+        return new SellLimitOrderDto();
       }
-    } else {
-      log.error("매도 주문 오류 statusCode = {} response ={}", response.getStatusCode(),
-          response.getBody());
-      throw new RuntimeException("매도 주문 오류 통신확인 필요");
+    } catch (JsonProcessingException e) {
+      log.error("[sellLimitOrder] JSON 파싱 에러 request = {} response = {}", requestBodyMap, response);
+      return new SellLimitOrderDto();
     }
   }
 
+  /**
+   * 매수 주문이 체결되었는지 확인
+   *
+   * @param buyOrder 매수 주문서
+   * @return 매수 완료 주문서
+   */
   public CheckBuyOrderDto checkBuyOrder(Order buyOrder) {
 
     LocalDate currentDate = LocalDate.now();
@@ -469,8 +469,8 @@ public class HanTooApi {
           }
         }
         return checkBuyOrderDto;
-      } catch (IOException e) {
-        e.printStackTrace();
+      } catch (JsonProcessingException e) {
+        log.error("[checkBuyOrder] JSON 파싱 에러 response.getBody() = {}", response.getBody());
         return new CheckBuyOrderDto();
       }
 
@@ -479,14 +479,19 @@ public class HanTooApi {
     }
   }
 
-  public List<CheckSellOrderDto> checkSellOrder(Stock stock) throws InterruptedException {
+  /**
+   * 매도 주문이 체결되었는지 확인
+   *
+   * @param stock 주식 정보
+   * @return 매도 체크 완료한 주문서
+   */
+  public List<CheckSellOrderDto> checkSellOrder(Stock stock) {
 
     LocalDate currentDate = LocalDate.now();
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
     String formattedDate = currentDate.format(formatter);
 
     String pdno = String.valueOf(stock.getTicker());
-    String stockName = String.valueOf(stock.getStockName());
 
     ///헤더 셋팅
     HttpHeaders headers = new HttpHeaders();
@@ -537,12 +542,14 @@ public class HanTooApi {
 
         return checkSellOrderDtos;
 
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new InterruptedException("상태코드 확인");
+      } catch (JsonProcessingException e) {
+        log.error("[checkSellOrder] JSON 파싱 에러 response.getBody() = {}", response.getBody());
+        return new ArrayList<>();
       }
     } else {
-      throw new InterruptedException("상태코드 확인");
+      log.error("[checkSellOrder] 상태코드 확인 statusCode = {} response ={}", response.getStatusCode(),
+          response.getBody());
+      return new ArrayList<>();
     }
 
   }

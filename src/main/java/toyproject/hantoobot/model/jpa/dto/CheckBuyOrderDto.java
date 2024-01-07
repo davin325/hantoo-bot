@@ -1,4 +1,4 @@
-package toyproject.hantoobot.model.dto;
+package toyproject.hantoobot.model.jpa.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,9 +13,8 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-public class CheckSellOrderDto {
-
-  private String sellKey;
-  private int sellQty;
-
+public class CheckBuyOrderDto {
+  private String buyKey;
+  private int buyPrice;
+  private int totalPrice;
 }

@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import toyproject.hantoobot.model.enums.Status;
+import toyproject.hantoobot.model.enums.State;
 
 @Getter
 @Setter
@@ -24,7 +24,7 @@ public class OrderDto {
 
   private String sellKey;
 
-  private Status state;
+  private State state;
 
   private int qty;
 
