@@ -33,7 +33,11 @@ public class OrderService {
   public void newOrder() {
     List<Stock> stocks = stockRepository.findAll();
     for (Stock stock : stocks) {
-      //주문 전 매수대상인지 체크
+
+      //주문 전 매도 되었는지 체크
+      checkSellOrder(stock);
+
+      //주문 전 매수 대상인지 체크
       if (!beforeBuy(stock)) {
         continue;
       }
@@ -43,7 +47,6 @@ public class OrderService {
 
       //매도
       sell(buyOrder);
-      checkSellOrder(stock);
       try {
         Thread.sleep(500);
       } catch (InterruptedException e) {
